@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Vista dinámica</title>
+</head>
+<body>
+  <div id="contenido">Cargando...</div>
+
+  <script>
+    async function main() {
+      const params = new URLSearchParams(window.location.search);
+      const tipo = params.get("tipo");
+      const valor = params.get("valor");
+
+      const xml = await fetch("data/estaciones.xml").then(r => r.text());
+      let xslFile = "xslt/general.xsl";
+      const processor = new XSLTProcessor();
+
+      if (tipo === "ciudad") {
+        xslFile = "xslt/filtrar-ciudad.xsl";
+      } else if (tipo === "cargador") {
+        xslFile = "xslt/filtrar-cargador.xsl";
+      } else if (tipo === "level2") {
+        xslFile = "xslt/filtrar-level2.xsl";
+      } else if (tipo === "nombre") {
+        xslFile = "xslt/filtrar-nombre.xsl";
+      }
+
+      const xsl = await fetch(xslFile).then(r => r.text());
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, "text/xml");
+      const xslDoc = parser.parseFromString(xsl, "text/xml");
+
+      processor.importStylesheet(xslDoc);
+
+      if (tipo === "ciudad") {
+        processor.setParameter(null, "filtro_ciudad", valor);
+      } else if (tipo === "cargador") {
+        processor.setParameter(null, "filtro_cargador", valor);
+      } else if (tipo === "level2") {
+        processor.setParameter(null, "filtro_level2", valor);
+      } else if (tipo === "nombre") {
+        processor.setParameter(null, "filtro_nombre", valor);
+      }
+
+      const result = processor.transformToFragment(xmlDoc, document);
+      document.getElementById("contenido").innerHTML = "";
+      document.getElementById("contenido").appendChild(result);
+    }
+
+    main();
+  </script>
+</body>
+</html>

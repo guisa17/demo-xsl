@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Estaciones de Carga - Visor Dinámico</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    select, input, button {
+      font-size: 16px;
+      margin: 5px;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Visualizador Dinámico de Estaciones de Carga</h1>
+
+  <label for="tipoFiltro">Filtrar por:</label>
+  <select id="tipoFiltro" onchange="actualizarOpciones()">
+    <option value="vistaGeneral">Vista general</option>
+    <option value="porCiudad">Ciudad</option>
+    <option value="porCargadorRapido">Cantidad de cargadores rápidos DC</option>
+    <option value="porLevel2">Cantidad de cargadores Level 2</option>
+  </select>
+
+  <label for="valorFiltro" id="labelFiltro" style="display: none;">Valor:</label>
+  <select id="valorFiltro" style="display: none;"></select>
+
+  <button onclick="filtrar()">Mostrar</button>
+
+  <br><br>
+
+  <label for="nombreBusqueda">Buscar por nombre:</label>
+  <input type="text" id="nombreBusqueda" placeholder="Ej. Tesla, COMCAST..." style="font-size:16px;" />
+  <button onclick="filtrarPorNombre()">Buscar nombre</button>
+
+  <iframe id="visor"></iframe>
+
+  <script>
+    async function obtenerDatosXML() {
+      const response = await fetch("data/estaciones.xml");
+      const xmlText = await response.text();
+      const parser = new DOMParser();
+      return parser.parseFromString(xmlText, "application/xml");
+    }
+
+    async function actualizarOpciones() {
+      const tipo = document.getElementById("tipoFiltro").value;
+      const valorFiltro = document.getElementById("valorFiltro");
+      const labelFiltro = document.getElementById("labelFiltro");
+
+      valorFiltro.innerHTML = "";
+      labelFiltro.style.display = "none";
+      valorFiltro.style.display = "none";
+
+      if (tipo === "porCiudad") {
+        const xml = await obtenerDatosXML();
+        const ciudades = new Set();
+        const rows = xml.getElementsByTagName("row");
+        for (let row of rows) {
+          const ciudad = row.getElementsByTagName("city")[0]?.textContent.trim();
+          if (ciudad) ciudades.add(ciudad);
+        }
+
+        [...ciudades].sort().forEach(ciudad => {
+          const option = document.createElement("option");
+          option.value = ciudad;
+          option.textContent = ciudad;
+          valorFiltro.appendChild(option);
+        });
+
+        labelFiltro.textContent = "Ciudad:";
+        labelFiltro.style.display = "inline";
+        valorFiltro.style.display = "inline";
+      }
+
+      if (tipo === "porCargadorRapido") {
+        ["NONE", "1", "2", "4", "8", "16"].forEach(cantidad => {
+          const option = document.createElement("option");
+          option.value = cantidad;
+          option.textContent = cantidad;
+          valorFiltro.appendChild(option);
+        });
+
+        labelFiltro.textContent = "Cantidad de cargadores rápidos:";
+        labelFiltro.style.display = "inline";
+        valorFiltro.style.display = "inline";
+      }
+
+      if (tipo === "porLevel2") {
+        ["NONE", "1", "2", "4", "6", "8", "10", "12", "16"].forEach(cantidad => {
+          const option = document.createElement("option");
+          option.value = cantidad;
+          option.textContent = cantidad;
+          valorFiltro.appendChild(option);
+        });
+
+        labelFiltro.textContent = "Cantidad de cargadores Level 2:";
+        labelFiltro.style.display = "inline";
+        valorFiltro.style.display = "inline";
+      }
+    }
+
+    function filtrar() {
+      const tipo = document.getElementById("tipoFiltro").value;
+      const valor = document.getElementById("valorFiltro").value;
+      const visor = document.getElementById("visor");
+
+      const params = new URLSearchParams();
+      if (tipo === "porCiudad") {
+        params.set("tipo", "ciudad");
+        params.set("valor", valor);
+      } else if (tipo === "porCargadorRapido") {
+        params.set("tipo", "cargador");
+        params.set("valor", valor);
+      } else if (tipo === "porLevel2") {
+        params.set("tipo", "level2");
+        params.set("valor", valor);
+      } else {
+        params.set("tipo", "general");
+      }
+
+      visor.src = `mostrar.html?${params.toString()}`;
+    }
+
+    function filtrarPorNombre() {
+      const nombre = document.getElementById("nombreBusqueda").value.trim();
+      if (!nombre) {
+        alert("Ingresa un nombre o parte del nombre para buscar.");
+        return;
+      }
+
+      const visor = document.getElementById("visor");
+      const params = new URLSearchParams();
+      params.set("tipo", "nombre");
+      params.set("valor", nombre.toLowerCase());
+
+      visor.src = `mostrar.html?${params.toString()}`;
+    }
+
+    window.onload = () => filtrar();
+  </script>
+</body>
+</html>
